@@ -13,6 +13,19 @@
 #define ESP_CHANNEL 1
 static uint8_t peer_mac [ESP_NOW_ETH_ALEN] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
 
+typedef struct struct_message {
+    uint8_t value;
+    /* 
+    Add data
+    ...
+    uint8_t data_uint8;
+    uint16_t data_uint16;
+    float data_float;
+    ...
+    */
+} struct_message;
+struct_message my_struct;
+
 extern "C" void app_main();
 
 static const char * TAG = "ESP_NOW";
@@ -29,13 +42,12 @@ static esp_err_t init_wifi(void)
     esp_wifi_set_storage(WIFI_STORAGE_FLASH);
     esp_wifi_start();
 
-    ESP_LOGI(TAG, "wifi init completed");
     return ESP_OK;
 }
 
 void recv_cb(const esp_now_recv_info_t * esp_now_info, const uint8_t *data, int data_len)
 {
-    ESP_LOGI(TAG, "Data received " MACSTR "%s", MAC2STR(esp_now_info->src_addr), data);
+    ESP_LOGI(TAG, "Data received from " MACSTR "\t Value: %u", MAC2STR(esp_now_info->src_addr), my_struct.value);
 }
 
 void send_cb(const uint8_t *mac_addr, esp_now_send_status_t status)
@@ -56,7 +68,6 @@ static esp_err_t init_esp_now(void)
     esp_now_register_recv_cb(recv_cb);
     esp_now_register_send_cb(send_cb);
 
-    ESP_LOGI(TAG, "esp now init completed");
     return ESP_OK;
 }
 
@@ -73,25 +84,38 @@ static esp_err_t register_peer(uint8_t *peer_addr)
     return ESP_OK;
 }
 
-static esp_err_t esp_now_send_data(const uint8_t *peer_addr, const uint8_t *data, size_t len)
-{
-    
-
-    return ESP_OK;
-}
-
 
 void app_main()
 {
-    ESP_ERROR_CHECK(init_wifi());
-    ESP_ERROR_CHECK(init_esp_now());
-    ESP_ERROR_CHECK(register_peer(peer_mac));
+    if(init_wifi() == ESP_OK)
+    {
+        ESP_LOGI(TAG, "WiFi Init Completed");
+    }
+    else{
+        ESP_LOGE(TAG, "WiFi Init Error");
+    }
 
-    uint8_t data[] = {"hola"};
+    if(init_esp_now() == ESP_OK)
+    {
+        ESP_LOGI(TAG, "EspNow Init Completed");
+    }
+    else{
+        ESP_LOGE(TAG, "EspNow Init Error");
+    } 
+
+    if(register_peer(peer_mac) == ESP_OK)
+    {
+        ESP_LOGI(TAG, "Register Peer Completed");
+    }
+    else{
+        ESP_LOGE(TAG, "Register Peer Error");
+    } 
+
+    my_struct.value = 0x01;
 
     for(;;)
     {
-        esp_now_send(peer_mac, (uint8_t *) &data, sizeof(data));
+        esp_now_send(peer_mac, (uint8_t *) &my_struct, sizeof(my_struct));
         vTaskDelay(pdMS_TO_TICKS(1000));
     }
 
